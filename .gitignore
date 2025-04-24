@@ -1,0 +1,6 @@
+__pycache__/
+test/
+*.spc
+*.asm
+*.nspc
+*.brr
