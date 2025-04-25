@@ -39,7 +39,7 @@ class PJASMConverter():
         self.asm += sample_table.sample_table_to_asm()
         self.asm += 'endspcblock\n\n'
 
-        self.asm += 'spcblock $B210-($6E00-!p_sampleData) nspc ; sample data\n'
+        self.asm += 'spcblock $B210-$6E00+!p_sampleData nspc ; sample data\n'
         self.asm += sample_table.samples_to_asm(fp) + '\n'
 
         self.asm += 'dw 0,0,0,0 ; padding for shared trackers\n'
