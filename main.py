@@ -8,9 +8,10 @@ argparser = argparse.ArgumentParser(description = 'Converts SPC files using the 
 
 subparsers = argparser.add_subparsers(dest = 'mode', help = '')
 parser_a = subparsers.add_parser('pj', help = 'ASM for PJ\'s optimized sound engine')
-parser_a.add_argument('--p_instr_table', type = str, default=None, help = 'Address of instrument table')
-parser_a.add_argument('--p_track_pointers', type = str, default=None, help = 'Address of tracker pointers')
-parser_a.add_argument('--p_track_index', type = str, default=None, help = 'Tracker index')
+parser_a.add_argument('--p_instr_table', type = lambda n: int(n, 16), default=None, help = 'Address of instrument table')
+parser_a.add_argument('--p_track_pointers', type = lambda n: int(n, 16), default=None, help = 'Address of tracker pointers')
+parser_a.add_argument('--i_track', type = lambda n: int(n, 16), default=None, help = 'Tracker index')
+parser_a.add_argument('--p_track', type = lambda n: int(n, 16), default=None, help = 'Address of track')
 parser_a.add_argument('--game', type = str, choices=('common', 'f_zero', 'super_mario_all_stars'), default='common', help = 'Game to autodetect instrument table and tracker')
 parser_a.add_argument('spc', type = str, help = 'Filepath to input SPC')
 parser_a.add_argument('asm', type = argparse.FileType('w'), help = 'Filepath to output ASM')
@@ -31,15 +32,16 @@ if args.mode == 'pj':
     scanner = NSPCScanner(spc)
     if args.p_instr_table == None:
         args.p_instr_table = scanner.scan_instr_table()
-    if args.p_track_pointers == None:
-        args.p_track_pointers = scanner.scan_tracker_pointers()
-    if args.p_track_index == None:
-        args.p_track_index = scanner.scan_track_index(args.game)
-    spc.seek(args.p_track_pointers+args.p_track_index*2-2)
-    p_track = spc.read_int(2)
+    if args.p_track == None:
+        if args.p_track_pointers == None:
+            args.p_track_pointers = scanner.scan_tracker_pointers()
+        if args.i_track == None:
+            args.i_track = scanner.scan_track_index(args.game)
+        spc.seek(args.p_track_pointers+args.i_track*2-2)
+        args.p_track = spc.read_int(2)
 
     converter = PJASMConverter(spc)
-    args.asm.write(converter.convert(args.p_instr_table, p_track, ''))
+    args.asm.write(converter.convert(args.p_instr_table, args.p_track, ''))
 elif args.mode == 'pj_bulk':
     for spc_path in glob.glob(os.path.join(args.spc, '*.spc')):
         spc = SPCFile(spc_path)
