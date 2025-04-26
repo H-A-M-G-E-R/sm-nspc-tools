@@ -127,7 +127,7 @@ class Track():
         defines += '\n'
         return defines
 
-    def to_asm(self, end=True, perc_base=0, first_perc=0):
+    def to_asm(self, end=True, perc_base=0, first_perc=None):
         asm = f'{self.label}\n'
         for command in self.commands:
             asm += '  '
