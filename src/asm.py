@@ -46,6 +46,11 @@ class PJASMConverter():
         self.asm += 'Trackers:\n'
         self.asm += f'  dw {tracker.label}\n\n'
 
+        self.spc.seek(0x1000C)
+        main_vol_l = self.spc.read_int(1)
+        self.spc.seek(0x1001C)
+        main_vol_r = self.spc.read_int(1)
+
         self.asm += tracker.to_asm() + '\n'
         for pattern in tracker.patterns.values():
             self.asm += pattern.to_asm() + '\n'
@@ -54,11 +59,11 @@ class PJASMConverter():
             end = True
             for track in pattern.tracks:
                 if track != None:
-                    self.asm += track.to_asm(end=end, perc_base=perc_base, first_perc=first_perc) + '\n'
+                    self.asm += track.to_asm(end=end, perc_base=perc_base, first_perc=first_perc, main_vol_l=main_vol_l, main_vol_r=main_vol_r) + '\n'
                     end = False
 
         for subsection in tracker.subsections().values():
-            self.asm += subsection.to_asm(perc_base=perc_base, first_perc=first_perc) + '\n'
+            self.asm += subsection.to_asm(perc_base=perc_base, first_perc=first_perc, main_vol_l=main_vol_l, main_vol_r=main_vol_r) + '\n'
 
         self.asm = self.asm[:-1] # delete newline
         self.asm += 'endspcblock\n\n'

@@ -127,7 +127,7 @@ class Track():
         defines += '\n'
         return defines
 
-    def to_asm(self, end=True, perc_base=0, first_perc=None):
+    def to_asm(self, end=True, perc_base=0, first_perc=None, main_vol_l=0x60, main_vol_r=0x60):
         asm = f'{self.label}\n'
         for command in self.commands:
             asm += '  '
@@ -152,6 +152,10 @@ class Track():
                         params[0] = f',!instr{command[1]-0xCA+perc_base:02X}'
                     else:
                         params[0] = f',!instr{command[1]:02X}'
+                elif command[0] == 0xF5:
+                    # Normalize echo volume
+                    params[1] = f',{round(command[2]*0x60/main_vol_l)}'
+                    params[2] = f',{round(command[3]*0x60/main_vol_r)}'
                 elif command[0] == 0xFA:
                     #params[0] = f',${command[1]:02X}'
                     if first_perc == None:
