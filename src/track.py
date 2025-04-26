@@ -268,7 +268,10 @@ class Tracker():
         for track in self.tracks_and_subsections():
             for command in track.commands:
                 if command[0] == 0xE0:
-                    used_instrs.add(command[1])
+                    if command[1] >= 0xCA:
+                        used_instrs.add(command[1]-0xCA+perc_base)
+                    else:
+                        used_instrs.add(command[1])
                 elif command[0] >= 0xCA and command[0] < 0xE0:
                     used_perc_instrs.add(command[0]-0xCA+perc_base)
 
