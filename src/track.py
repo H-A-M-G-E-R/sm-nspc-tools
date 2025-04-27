@@ -29,7 +29,7 @@ class Track():
         0xF6: 0, # F6          ; End echo
         0xF7: 3, # F7 dd ff ii ; Set echo parameters: echo delay = d, echo feedback volume = f, echo FIR filter index = i (range 0..3)
         0xF8: 3, # F8 dd ll rr ; Dynamic echo volume after d tics with target echo volume left = l and target echo volume right = r
-        0xF9: 3, # F9 dd ll tt ; Pitch slide after d tics over l tics by t semitones
+        0xF9: 3, # F9 dd ll nn ; Pitch slide after d tics over l tics to target note n
         0xFA: 1  # FA ii       ; Percussion instruments base index = i
     }
 
@@ -63,12 +63,17 @@ class Track():
         0xFA: '!percBase'
     }
 
-    def __init__(self, label=''):
+    custom_command_lengths = {}
+
+    custom_command_names = {}
+
+    def __init__(self, label='', game='common'):
         self.label = label
         self.commands = []
         self.len = 0
         self.note_len = 0
         self.is_subroutine = False
+        self.game = game
 
     def extract(self, spc: SPCFile, addr, len_limit=None):
         saved_addr = spc.tell()
@@ -97,7 +102,7 @@ class Track():
                 subsection_addr = spc.read_int(2)
                 repetitions = spc.read_int(1)
 
-                subsection = Track(label=f'.sub{subsection_addr:04X}')
+                subsection = Track(label=f'.sub{subsection_addr:04X}', game=self.game)
                 subsection.is_subroutine = True
                 subsection.note_len = self.note_len
                 subsection.extract(spc, subsection_addr)
@@ -109,7 +114,10 @@ class Track():
                 if len_limit != None and self.len >= len_limit:
                     break
             else: # track command
-                length = Track.command_lengths[command]
+                if self.game in Track.custom_command_lengths and command in Track.custom_command_lengths[self.game]:
+                    length = Track.custom_command_lengths[self.game][command]
+                else:
+                    length = Track.command_lengths[command]
                 self.commands.append([command] + [spc.read_int(1) for _ in range(length)])
 
         spc.seek(saved_addr)
@@ -153,26 +161,32 @@ class Track():
                     else:
                         params[0] = f',!instr{command[1]:02X}'
                 elif command[0] == 0xF5:
+                    params[0] = f',%{command[1]:08b}'
+
                     # Normalize echo volume
                     params[1] = f',{round(command[2]*0x60/main_vol_l)}'
                     params[2] = f',{round(command[3]*0x60/main_vol_r)}'
+                elif command[0] == 0xF9:
+                    params[2] = f' : {Track.keys[(command[3]&0x7F)%12]}{(command[3]&0x7F)//12+2}'
                 elif command[0] == 0xFA:
                     #params[0] = f',${command[1]:02X}'
                     if first_perc == None:
                         asm = asm[:-2]
                         continue
                     params[0] = f',!instr{first_perc:02X}'
-                elif command[0] == 0xF5:
-                    params[0] = f',%{command[1]:08b}'
-                asm += f'{Track.command_names[command[0]]}{''.join(params)}\n'
+                if self.game in Track.custom_command_names and command[0] in Track.custom_command_names[self.game]:
+                    asm += f'{Track.custom_command_names[self.game][command[0]]}{''.join(params)}\n'
+                else:
+                    asm += f'{Track.command_names[command[0]]}{''.join(params)}\n'
         if end:
             asm += '  !end\n'
         return asm
 
 class Pattern():
-    def __init__(self, label=''):
+    def __init__(self, label='', game='common'):
         self.label = label
         self.tracks = [None]*8
+        self.game = game
 
     def extract(self, spc: SPCFile, addr):
         saved_addr = spc.tell()
@@ -182,7 +196,7 @@ class Pattern():
         for i in range(8):
             track_addr = spc.read_int(2)
             if track_addr != 0:
-                track = Track(label=f'{self.label}_{i}')
+                track = Track(label=f'{self.label}_{i}', game=self.game)
                 track.extract(spc, track_addr, len_limit)
 
                 self.tracks[i] = track
@@ -195,10 +209,11 @@ class Pattern():
         return f'{self.label}: dw {', '.join('0' if track == None else track.label for track in self.tracks)}'
 
 class Tracker():
-    def __init__(self, label=''):
+    def __init__(self, label='', game='common'):
         self.label = label
         self.commands = []
         self.patterns = {}
+        self.game = game
 
     def extract(self, spc: SPCFile, addr):
         saved_addr = spc.tell()
@@ -220,7 +235,7 @@ class Tracker():
                 if not f'{command:04X}' in self.patterns:
                     label = f'.pattern{pattern_i}'
                     pattern_i += 1
-                    pattern = Pattern(label)
+                    pattern = Pattern(label=label, game=self.game)
                     pattern.extract(spc, command)
                     self.patterns[label] = pattern
                 self.commands.append([label])

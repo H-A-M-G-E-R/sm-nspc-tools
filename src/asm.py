@@ -3,16 +3,17 @@ from src.instr import BRRSample, SampleTable, InstrTable
 from src.track import Track, Pattern, Tracker
 
 class PJASMConverter():
-    def __init__(self, spc):
+    def __init__(self, spc, game='common'):
         self.spc = spc
         self.asm = ''
+        self.game = game
 
-    def convert(self, p_instr_table, p_track, fp):
+    def convert(self, p_instr_table, p_track, defines_fp):
         self.asm += 'asar 1.91\n'
         self.asm += 'norom : org 0\n'
-        self.asm += 'incsrc "defines.asm"\n\n'
+        self.asm += f'incsrc "{defines_fp}"\n\n'
 
-        tracker = Tracker(f'Tracker{p_track:04X}')
+        tracker = Tracker(label=f'Tracker{p_track:04X}', game=self.game)
         tracker.extract(self.spc, p_track)
 
         perc_base = tracker.perc_base()
@@ -40,7 +41,7 @@ class PJASMConverter():
         self.asm += 'endspcblock\n\n'
 
         self.asm += 'spcblock $B210-$6E00+!p_sampleData nspc ; sample data\n'
-        self.asm += sample_table.samples_to_asm(fp) + '\n'
+        self.asm += sample_table.samples_to_asm('') + '\n'
 
         self.asm += 'dw 0,0,0,0 ; padding for shared trackers\n'
         self.asm += 'Trackers:\n'

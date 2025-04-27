@@ -27,15 +27,6 @@ class NSPCScanner():
     def scan_track_index(self, game='common'):
         saved_addr = self.spc.tell()
         match game:
-            case 'common':
-                self.spc.seek(0xF4)
-                self.track_index = self.spc.read_int(1)
-                if self.track_index == 0:
-                    self.spc.seek(0x00)
-                    self.track_index = self.spc.read_int(1)
-                if self.track_index == 0:
-                    self.spc.seek(0x04)
-                    self.track_index = self.spc.read_int(1)
             case 'f_zero':
                 self.spc.seek(0x04)
                 self.track_index = self.spc.read_int(1)
@@ -48,6 +39,16 @@ class NSPCScanner():
                 if self.track_index == 0:
                     self.spc.seek(0x06)
                     self.track_index = self.spc.read_int(1)
+            case _:
+                self.spc.seek(0xF4)
+                self.track_index = self.spc.read_int(1)
+                if self.track_index == 0:
+                    self.spc.seek(0x00)
+                    self.track_index = self.spc.read_int(1)
+                if self.track_index == 0:
+                    self.spc.seek(0x04)
+                    self.track_index = self.spc.read_int(1)
 
         self.spc.seek(saved_addr)
+        self.track_index &= 0x7F # needed for Tetris & Dr. Mario
         return self.track_index
