@@ -95,10 +95,13 @@ class Track():
                 self.len += self.note_len
                 self.commands.append([command])
                 if len_limit != None and self.len >= len_limit:
-                    # Check for pitch slide command right after note
-                    command = spc.read_int(1)
-                    if command == 0xF9:
-                        self.commands.append([command] + [spc.read_int(1) for _ in range(3)])
+                    # Check for pitch slide commands right after note
+                    while True:
+                        command = spc.read_int(1)
+                        if command == 0xF9:
+                            self.commands.append([command] + [spc.read_int(1) for _ in range(3)])
+                        else:
+                            break
                     break
             elif command == 0xEF: # play subsection command
                 if self.is_subroutine:
