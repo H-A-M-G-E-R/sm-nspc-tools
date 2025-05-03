@@ -8,13 +8,15 @@ class PJASMConverter():
         self.asm = ''
         self.game = game
 
-    def convert(self, p_instr_table, p_track, defines_fp):
+    def convert(self, p_instr_table, p_track, defines_fp='defines.asm', hash_option=False, vol_multiplier=1.0):
         self.asm += 'asar 1.91\n'
         self.asm += 'norom : org 0\n'
         self.asm += f'incsrc "{defines_fp}"\n\n'
 
         tracker = Tracker(label=f'Tracker{p_track:04X}', game=self.game)
         tracker.extract(self.spc, p_track)
+        for track in tracker.tracks_and_subsections():
+            track.amplify(vol_multiplier)
 
         perc_base = tracker.perc_base()
         used_instrs = tracker.used_instrs(perc_base=perc_base)
@@ -34,14 +36,14 @@ class PJASMConverter():
         self.asm += 'endspcblock\n\n'
 
         self.spc.seek(0x1005D)
-        sample_table = SampleTable()
-        sample_table.extract(self.spc, self.spc.read_int(1)*0x100, used_sample_ids=used_instrs[0] | used_instrs[1])
+        self.sample_table = SampleTable()
+        self.sample_table.extract(self.spc, self.spc.read_int(1)*0x100, used_sample_ids=used_instrs[0] | used_instrs[1])
         self.asm += 'spcblock 4*$16+!p_sampleTable nspc ; sample table\n'
-        self.asm += sample_table.sample_table_to_asm()
+        self.asm += self.sample_table.sample_table_to_asm()
         self.asm += 'endspcblock\n\n'
 
         self.asm += 'spcblock $B210-$6E00+!p_sampleData nspc ; sample data\n'
-        self.asm += sample_table.samples_to_asm('') + '\n'
+        self.asm += self.sample_table.samples_to_asm('', hash_option) + '\n'
 
         self.asm += 'dw 0,0,0,0 ; padding for shared trackers\n'
         self.asm += 'Trackers:\n'

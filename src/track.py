@@ -129,6 +129,26 @@ class Track():
 
         spc.seek(saved_addr)
 
+    def amplify(self, vol_multiplier):
+        if vol_multiplier > 1:
+            for command in self.commands:
+                if command[0] == 0xED:
+                    if round(command[1] * vol_multiplier) > 255:
+                        raise AssertionError('Track volume is over 255')
+                    command[1] = round(command[1] * vol_multiplier)
+                elif command[0] == 0xEE:
+                    if round(command[2] * vol_multiplier) > 255:
+                        raise AssertionError('Track volume is over 255')
+                    command[2] = round(command[2] * vol_multiplier)
+                elif command[0] == 0xEF:
+                    command[1].amplify(vol_multiplier)
+        elif vol_multiplier < 1:
+            for command in self.commands:
+                if command[0] == 0xE5:
+                    command[1] = round(command[1] * vol_multiplier)
+                elif command[0] == 0xE6:
+                    command[2] = round(command[2] * vol_multiplier)
+
     def asm_defines():
         defines = ''
         for note in range(0xC8-0x80):

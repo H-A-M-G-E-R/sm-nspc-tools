@@ -1,5 +1,5 @@
 from src.spcfile import SPCFile
-import os.path
+import hashlib, os.path
 
 class BRRSample():
     def __init__(self, label=''):
@@ -41,23 +41,24 @@ class SampleTable():
         for i in range(count):
             spc.seek(addr+i*4)
             p_start = spc.read_int(2)
-            if p_start in label_map:
-                label_map[p_start] += f'_{i:02X}'
+            p_end = spc.read_int(2)
+            if (p_start, p_end) in label_map:
+                label_map[(p_start, p_end)] += f'_{i:02X}'
             else:
-                label_map[p_start] = f'Sample{i:02X}'
+                label_map[(p_start, p_end)] = f'Sample{i:02X}'
 
         for i in range(count):
             if used_sample_ids == None or i in used_sample_ids:
                 spc.seek(addr+i*4)
                 p_start = spc.read_int(2)
                 p_end = spc.read_int(2)
-                if p_start == 0xFFFF and p_end == 0xFFFF:
+                if used_sample_ids == None and p_start == 0xFFFF and p_end == 0xFFFF:
                     break
 
-                self.sample_labels.append(label_map[p_start])
-                sample = BRRSample(label_map[p_start])
+                self.sample_labels.append(label_map[(p_start, p_end)])
+                sample = BRRSample(label_map[(p_start, p_end)])
                 sample.extract_from_header(spc, addr+i*4)
-                self.samples[label_map[p_start]] = sample
+                self.samples[label_map[(p_start, p_end)]] = sample
 
         spc.seek(saved_addr)
 
@@ -68,14 +69,20 @@ class SampleTable():
             asm += f'  dw {label},{label}+{self.samples[label].loop_point}\n'
         return asm
 
-    def samples_to_asm(self, fp):
+    def samples_to_asm(self, fp, hash_option=False):
         asm = ''
         for label, sample in self.samples.items():
-            asm += f'  {label}: incbin "{os.path.join(fp, label) + '.brr'}"\n'
+            if hash_option:
+                fn = f'Sample_{hashlib.md5(self.samples[label].data).hexdigest()}'
+            else:
+                fn = label
+            asm += f'  {label}: incbin "{os.path.join(fp, fn) + '.brr'}"\n'
         return asm
 
-    def samples_to_files(self, fp):
+    def samples_to_files(self, fp, hash_option=False):
         for label, sample in self.samples.items():
+            if hash_option:
+                label = f'Sample_{hashlib.md5(self.samples[label].data).hexdigest()}'
             file = open(os.path.join(fp, label) + '.brr', 'wb')
             file.write(sample.data)
 
