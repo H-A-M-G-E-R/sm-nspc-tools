@@ -140,8 +140,6 @@ class Track():
                     if round(command[2] * vol_multiplier) > 255:
                         raise AssertionError('Track volume is over 255')
                     command[2] = round(command[2] * vol_multiplier)
-                elif command[0] == 0xEF:
-                    command[1].amplify(vol_multiplier)
         elif vol_multiplier < 1:
             for command in self.commands:
                 if command[0] == 0xE5:
