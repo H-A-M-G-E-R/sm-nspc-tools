@@ -191,6 +191,9 @@ class Track():
                     # Normalize echo volume
                     params[1] = f',{round(command[2]*0x60/main_vol_l)}'
                     params[2] = f',{round(command[3]*0x60/main_vol_r)}'
+                elif command[0] == 0xF8:
+                    params[1] = f',{round(command[2]*0x60/main_vol_l)}'
+                    params[2] = f',{round(command[3]*0x60/main_vol_r)}'
                 elif command[0] == 0xF9:
                     params[2] = f' : {Track.keys[(command[3]&0x7F)%12]}{(command[3]&0x7F)//12+2}'
                 elif command[0] == 0xFA:
