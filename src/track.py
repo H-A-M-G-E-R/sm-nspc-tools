@@ -161,6 +161,8 @@ class Track():
         return defines
 
     def to_asm(self, end=True, perc_base=0, first_perc=None, main_vol_l=0x60, main_vol_r=0x60):
+        signed = lambda n: n-0x100 if n >= 0x80 else n
+
         asm = f'{self.label}\n'
         for command in self.commands:
             asm += '  '
@@ -189,11 +191,11 @@ class Track():
                     params[0] = f',%{command[1]:08b}'
 
                     # Normalize echo volume
-                    params[1] = f',{round(command[2]*0x60/main_vol_l)}'
-                    params[2] = f',{round(command[3]*0x60/main_vol_r)}'
+                    params[1] = f',{round(signed(command[2])*0x60/main_vol_l)}'
+                    params[2] = f',{round(signed(command[3])*0x60/main_vol_r)}'
                 elif command[0] == 0xF8:
-                    params[1] = f',{round(command[2]*0x60/main_vol_l)}'
-                    params[2] = f',{round(command[3]*0x60/main_vol_r)}'
+                    params[1] = f',{round(signed(command[2])*0x60/main_vol_l)}'
+                    params[2] = f',{round(signed(command[3])*0x60/main_vol_r)}'
                 elif command[0] == 0xF9:
                     params[2] = f' : {Track.keys[(command[3]&0x7F)%12]}{(command[3]&0x7F)//12+2}'
                 elif command[0] == 0xFA:
