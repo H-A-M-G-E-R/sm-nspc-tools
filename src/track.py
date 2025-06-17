@@ -256,6 +256,7 @@ class Tracker():
 
         command_addrs = []
         pattern_i = 0
+        used_patterns = {}
         while True:
             command_addrs.append(spc.tell())
             command = spc.read_int(2)
@@ -267,8 +268,11 @@ class Tracker():
                 if command >= 0x81:
                     break
             else: # play pattern
-                if not f'{command:04X}' in self.patterns:
+                if command in used_patterns:
+                    label = used_patterns[command]
+                else:
                     label = f'.pattern{pattern_i}'
+                    used_patterns[command] = label
                     pattern_i += 1
                     pattern = Pattern(label=label, game=self.game)
                     pattern.extract(spc, command)
