@@ -75,6 +75,11 @@ class Track():
         self.is_subroutine = False
         self.game = game
 
+    def __eq__(self, o):
+        if type(self) != type(o):
+            return False
+        return self.commands == o.commands
+
     def extract(self, spc: SPCFile, addr, len_limit=None):
         saved_addr = spc.tell()
         spc.seek(addr)
