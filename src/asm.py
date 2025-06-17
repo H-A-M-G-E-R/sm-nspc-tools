@@ -58,11 +58,13 @@ class PJASMConverter():
         for pattern in tracker.patterns.values():
             self.asm += pattern.to_asm() + '\n'
         self.asm += '\n'
+        used_tracks = set()
         for pattern in tracker.patterns.values():
             end = True
             for track in pattern.tracks:
-                if track != None:
+                if track != None and not track.label in used_tracks:
                     self.asm += track.to_asm(end=end, perc_base=perc_base, first_perc=first_perc, main_vol_l=main_vol_l, main_vol_r=main_vol_r) + '\n'
+                    used_tracks.add(track.label)
                     #end = False
 
         for subsection in tracker.subsections().values():

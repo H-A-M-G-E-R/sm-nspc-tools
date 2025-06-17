@@ -267,6 +267,21 @@ class Tracker():
                     pattern_i += 1
                     pattern = Pattern(label=label, game=self.game)
                     pattern.extract(spc, command)
+
+                    # Deduplicate tracks
+                    for i, track in enumerate(pattern.tracks):
+                        if track == None:
+                            break
+                        duplicate = False
+                        for other_pattern in self.patterns.values():
+                            for other_track in other_pattern.tracks:
+                                if track == other_track:
+                                    duplicate = True
+                                    #print(f'Duplicate: {track.label} = {other_track.label}')
+                                    pattern.tracks[i] = copy.deepcopy(other_track)
+                                    break
+                            if duplicate:
+                                break
                     self.patterns[label] = pattern
                 self.commands.append([label])
 
