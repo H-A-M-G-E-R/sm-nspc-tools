@@ -8,7 +8,12 @@ class PJASMConverter():
         self.asm = ''
         self.game = game
 
-    def convert(self, p_instr_table, p_track, defines_fp='defines.asm', hash_option=False, vol_multiplier=1.0):
+    def convert(self, p_instr_table, p_track, p_note_length_table, defines_fp='defines.asm', hash_option=False, vol_multiplier=1.0):
+        self.spc.seek(0x1000C)
+        main_vol_l = self.spc.read_int(1)
+        self.spc.seek(0x1001C)
+        main_vol_r = self.spc.read_int(1)
+
         self.asm += 'asar 1.91\n'
         self.asm += 'norom : org 0\n'
         self.asm += f'incsrc "{defines_fp}"\n\n'
@@ -17,6 +22,7 @@ class PJASMConverter():
         tracker.extract(self.spc, p_track)
         for track in tracker.tracks_and_subsections():
             track.amplify(vol_multiplier)
+            track.normalize_echo_volume(main_vol_l=0x60, main_vol_r=0x60)
 
         perc_base = tracker.perc_base()
         used_instrs = tracker.used_instrs(perc_base=perc_base)
@@ -45,14 +51,17 @@ class PJASMConverter():
         self.asm += 'spcblock $B210-$6E00+!p_sampleData nspc ; sample data\n'
         self.asm += self.sample_table.samples_to_asm('', hash_option) + '\n'
 
+        self.spc.seek(p_note_length_table)
+        note_length_table = [self.spc.read_int(1) for _ in range(0x18)]
+
+        if note_length_table != Track.standard_note_length_table:
+            self.asm += 'NoteLengthTable: ; note length table\n'
+            self.asm += f'  db ${',$'.join(f'{b:02X}' for b in note_length_table[:8])}\n'
+            self.asm += f'  db ${',$'.join(f'{b:02X}' for b in note_length_table[8:])}\n\n'
+
         self.asm += 'dw 0,0,0,0 ; padding for shared trackers\n'
         self.asm += 'Trackers:\n'
         self.asm += f'  dw {tracker.label}\n\n'
-
-        self.spc.seek(0x1000C)
-        main_vol_l = self.spc.read_int(1)
-        self.spc.seek(0x1001C)
-        main_vol_r = self.spc.read_int(1)
 
         self.asm += tracker.to_asm() + '\n'
         for pattern in tracker.patterns.values():
@@ -63,12 +72,12 @@ class PJASMConverter():
             end = True
             for track in pattern.tracks:
                 if track != None and not track.label in used_tracks:
-                    self.asm += track.to_asm(end=end, perc_base=perc_base, first_perc=first_perc, main_vol_l=main_vol_l, main_vol_r=main_vol_r) + '\n'
+                    self.asm += track.to_asm(end=end, perc_base=perc_base, first_perc=first_perc, use_custom_note_length_table=note_length_table != Track.standard_note_length_table) + '\n'
                     used_tracks.add(track.label)
                     #end = False
 
         for subsection in tracker.subsections().values():
-            self.asm += subsection.to_asm(perc_base=perc_base, first_perc=first_perc, main_vol_l=main_vol_l, main_vol_r=main_vol_r) + '\n'
+            self.asm += subsection.to_asm(perc_base=perc_base, first_perc=first_perc) + '\n'
 
         self.asm = self.asm[:-1] # delete newline
         self.asm += 'endspcblock\n\n'

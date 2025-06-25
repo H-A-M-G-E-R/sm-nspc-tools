@@ -23,7 +23,7 @@ class BRRSample():
             self.data.extend(spc.read(8))
 
             if header & 1: # end of sample
-                loop = header & 2 == 2
+                self.loop = header & 2 == 2
                 break
 
         spc.seek(saved_addr)

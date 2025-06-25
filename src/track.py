@@ -68,6 +68,11 @@ class Track():
 
     custom_command_names = {}
 
+    standard_note_length_table = [
+        0x32,0x65,0x7F,0x98,0xB2,0xCB,0xE5,0xFC,
+        0x19,0x32,0x4C,0x65,0x72,0x7F,0x8C,0x98,0xA5,0xB2,0xBF,0xCB,0xD8,0xE5,0xF2,0xFC
+    ]
+
     def __init__(self, label='', game='common'):
         self.label = label
         self.commands = []
@@ -131,7 +136,14 @@ class Track():
                     length = Track.custom_command_lengths[self.game][command]
                 else:
                     length = Track.command_lengths[command]
-                self.commands.append([command] + [spc.read_int(1) for _ in range(length)])
+                params = [spc.read_int(1) for _ in range(length)]
+                if self.game == 'hal':
+                    # Panning is reversed in HAL games
+                    if command == 0xE1:
+                        params[0] = (20 - (params[0] & 0x1F)) | (params[0] & 0xE0)
+                    elif command == 0xE2:
+                        params[1] = (20 - (params[1] & 0x1F)) | (params[1] & 0xE0)
+                self.commands.append([command] + params)
 
         spc.seek(saved_addr)
 
@@ -153,6 +165,13 @@ class Track():
                 elif command[0] == 0xE6:
                     command[2] = round(command[2] * vol_multiplier)
 
+    def normalize_echo_volume(self, main_vol_l=0x60, main_vol_r=0x60, target_main_vol_l=0x60, target_main_vol_r=0x60):
+        signed = lambda n: n-0x100 if n >= 0x80 else n
+        for command in self.commands:
+            if command[0] == 0xF5 or command[0] == 0xF8:
+                command[2] = round(signed(command[2])*target_main_vol_l/main_vol_l)
+                command[3] = round(signed(command[3])*target_main_vol_r/main_vol_l)
+
     def asm_defines():
         defines = ''
         for note in range(0xC8-0x80):
@@ -166,10 +185,12 @@ class Track():
         defines += '\n'
         return defines
 
-    def to_asm(self, end=True, perc_base=0, first_perc=None, main_vol_l=0x60, main_vol_r=0x60):
-        signed = lambda n: n-0x100 if n >= 0x80 else n
-
+    def to_asm(self, end=True, perc_base=0, first_perc=None, use_custom_note_length_table=False):
         asm = f'{self.label}\n'
+        if self.label == '.pattern0_0':
+            if use_custom_note_length_table:
+                asm += '  !setNoteLengthTable : dw NoteLengthTable\n'
+
         for command in self.commands:
             asm += '  '
             if command[0] < 0x80:
@@ -195,13 +216,6 @@ class Track():
                         params[0] = f',!instr{command[1]:02X}'
                 elif command[0] == 0xF5:
                     params[0] = f',%{command[1]:08b}'
-
-                    # Normalize echo volume
-                    params[1] = f',{round(signed(command[2])*0x60/main_vol_l)}'
-                    params[2] = f',{round(signed(command[3])*0x60/main_vol_r)}'
-                elif command[0] == 0xF8:
-                    params[1] = f',{round(signed(command[2])*0x60/main_vol_l)}'
-                    params[2] = f',{round(signed(command[3])*0x60/main_vol_r)}'
                 elif command[0] == 0xF9:
                     params[2] = f' : {Track.keys[(command[3]&0x7F)%12]}{(command[3]&0x7F)//12+2}'
                 elif command[0] == 0xFA:
