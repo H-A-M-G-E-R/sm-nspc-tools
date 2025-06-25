@@ -1,4 +1,5 @@
 from src.spcfile import SPCFile
+import copy
 
 class Track():
     keys = ['!c', '!cs', '!d', '!ds', '!e', '!f', '!fs', '!g', '!gs', '!a', '!as', '!b']
