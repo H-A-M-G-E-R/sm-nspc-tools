@@ -185,9 +185,41 @@ class Track():
         defines += '\n'
         return defines
 
-    def to_asm(self, end=True, perc_base=0, first_perc=None, use_custom_note_length_table=False):
+    def to_asm(self, end=True, perc_base=0, first_perc=None, use_custom_note_length_table=False, prefix='', spc: SPCFile=None):
+        signed = lambda n: n-0x100 if n >= 0x80 else n
+
         asm = f'{self.label}\n'
         if self.label == '.pattern0_0':
+            if prefix != '':
+                asm += f'  {prefix}\n'
+            if self.game == 'thunderspirits':
+                # read dsp registers for echo bc echo commands aren't there lol, haven't figured out what sets the echo
+                saved_addr = spc.tell()
+
+                # main volume = 0x60, so no echo volume normalization is made
+                spc.seek(0x1004D) # EON
+                eon = spc.read_int(1)
+                spc.seek(0x1002C) # EVOLL
+                evol_l = spc.read_int(1)
+                spc.seek(0x1003C) # EVOLR
+                evol_r = spc.read_int(1)
+
+                if evol_l == 0 and evol_r == 0:
+                    asm += '  !endEcho\n'
+                else:
+                    asm += f'  !echo,%{eon:08b},{signed(evol_l)},{signed(evol_r)}\n'
+
+                    spc.seek(0x1007D) # EDL
+                    edl = spc.read_int(1)
+                    spc.seek(0x1000D) # EFB
+                    efb = spc.read_int(1)
+                    # choose fir filter index based on first byte of fir filter
+                    spc.seek(0x1000F) # FIR0
+                    i_fir = [0x7F, 0x58, 0x0C, 0x34].index(spc.read_int(1))
+
+                    asm += f'  !echoParameters,{edl},{signed(efb)},{i_fir}\n'
+                
+                spc.seek(saved_addr)
             if use_custom_note_length_table:
                 asm += '  !setNoteLengthTable : dw NoteLengthTable\n'
 

@@ -9,7 +9,8 @@ game_list = (
     'common',
     'f_zero',
     'super_mario_all_stars',
-    'hal'
+    'hal',
+    'thunderspirits'
 )
 
 argparser = argparse.ArgumentParser(description = 'Converts SPC files using the N-SPC engine to ASM')
@@ -25,6 +26,7 @@ parser_a.add_argument('--p_track', type = lambda n: int(n, 16), default=None, he
 parser_a.add_argument('--defines_fp', type = str, default='defines.asm', help = 'Relative path to defines')
 parser_a.add_argument('--export_samples', action='store_true', help = 'Whether to export samples')
 parser_a.add_argument('--amplify', type = float, default=1.0, help = 'Amplify volume by a multiplier')
+parser_a.add_argument('--prefix', type = str, default='', help = 'Prefix to add to first track')
 parser_a.add_argument('spc', type = str, help = 'Filepath to input SPC')
 parser_a.add_argument('asm', type = str, help = 'Filepath to output ASM')
 
@@ -33,6 +35,7 @@ parser_b.add_argument('--game', type = str, choices=game_list, default='common',
 parser_b.add_argument('--defines_fp', type = str, default='defines.asm', help = 'Relative path to defines')
 parser_b.add_argument('--export_samples', action='store_true', help = 'Whether to export samples')
 parser_b.add_argument('--amplify', type = float, default=1.0, help = 'Amplify volume by a multiplier')
+parser_b.add_argument('--prefix', type = str, default='', help = 'Prefix to add to first track')
 parser_b.add_argument('spc', type = str, help = 'Folder path to input SPCs')
 parser_b.add_argument('asm', type = str, help = 'Folder path to output ASMs (and BRRS)')
 
@@ -59,7 +62,7 @@ if args.mode == 'pj':
 
     asm = open(args.asm, 'w')
     converter = PJASMConverter(spc, game=args.game)
-    asm.write(converter.convert(args.p_instr_table, args.p_track, args.p_note_length_table, args.defines_fp, args.export_samples, args.amplify))
+    asm.write(converter.convert(args.p_instr_table, args.p_track, args.p_note_length_table, args.defines_fp, args.export_samples, args.amplify, args.prefix))
 
     if args.export_samples:
         converter.sample_table.samples_to_files(os.path.split(args.asm)[0], hash_option=True)
@@ -75,7 +78,7 @@ elif args.mode == 'pj_bulk':
             spc_filename = os.path.split(spc_path)[1]
             asm = open(os.path.join(args.asm, os.path.splitext(spc_filename)[0] + '.asm'), 'w')
             converter = PJASMConverter(spc, game=args.game)
-            asm.write(converter.convert(scanner.scan_instr_table(args.game), p_track, p_note_length_table, args.defines_fp, args.export_samples, args.amplify))
+            asm.write(converter.convert(scanner.scan_instr_table(args.game), p_track, p_note_length_table, args.defines_fp, args.export_samples, args.amplify, args.prefix))
 
             if args.export_samples:
                 converter.sample_table.samples_to_files(args.asm, hash_option=True)
@@ -83,7 +86,7 @@ elif args.mode == 'pj_bulk':
             print(f'Unable to convert {os.path.split(spc_path)[1]}: {repr(sys.exception())}')
 elif args.mode == 'sample':
     spc = SPCFile(args.spc)
-    spc.seek(0x1005D)
+    spc.seek(0x1005D) # DIR
     sample_table = SampleTable()
     sample_table.extract(spc, spc.read_int(1)*0x100)
     sample_table.samples_to_files(args.fp)

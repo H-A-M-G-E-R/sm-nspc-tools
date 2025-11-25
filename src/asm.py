@@ -8,7 +8,7 @@ class PJASMConverter():
         self.asm = ''
         self.game = game
 
-    def convert(self, p_instr_table, p_track, p_note_length_table, defines_fp='defines.asm', hash_option=False, vol_multiplier=1.0):
+    def convert(self, p_instr_table, p_track, p_note_length_table, defines_fp='defines.asm', hash_option=False, vol_multiplier=1.0, prefix=''):
         self.spc.seek(0x1000C)
         main_vol_l = self.spc.read_int(1)
         self.spc.seek(0x1001C)
@@ -41,7 +41,7 @@ class PJASMConverter():
         self.asm += instr_table.to_asm()
         self.asm += 'endspcblock\n\n'
 
-        self.spc.seek(0x1005D)
+        self.spc.seek(0x1005D) # DIR
         self.sample_table = SampleTable()
         self.sample_table.extract(self.spc, self.spc.read_int(1)*0x100, used_sample_ids=used_instrs[0] | used_instrs[1])
         self.asm += 'spcblock 4*$16+!p_sampleTable nspc ; sample table\n'
@@ -72,7 +72,7 @@ class PJASMConverter():
             end = True
             for track in pattern.tracks:
                 if track != None and not track.label in used_tracks:
-                    self.asm += track.to_asm(end=end, perc_base=perc_base, first_perc=first_perc, use_custom_note_length_table=note_length_table != Track.standard_note_length_table) + '\n'
+                    self.asm += track.to_asm(end=end, perc_base=perc_base, first_perc=first_perc, use_custom_note_length_table=note_length_table != Track.standard_note_length_table, prefix=prefix, spc=self.spc) + '\n'
                     used_tracks.add(track.label)
                     #end = False
 
