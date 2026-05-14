@@ -22,7 +22,7 @@ class PJASMConverter():
         tracker.extract(self.spc, p_track)
         for track in tracker.tracks_and_subsections():
             track.amplify(vol_multiplier)
-            track.normalize_echo_volume(main_vol_l=0x60, main_vol_r=0x60)
+            track.normalize_echo_volume(main_vol_l=main_vol_l, main_vol_r=main_vol_r)
 
         perc_base = tracker.perc_base()
         used_instrs = tracker.used_instrs(perc_base=perc_base)
