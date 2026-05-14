@@ -10,7 +10,8 @@ game_list = (
     'f_zero',
     'super_mario_all_stars',
     'hal',
-    'thunderspirits'
+    'thunderspirits',
+    'addmusic'
 )
 
 argparser = argparse.ArgumentParser(description = 'Converts SPC files using the N-SPC engine to ASM')

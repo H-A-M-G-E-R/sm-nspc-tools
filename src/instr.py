@@ -86,23 +86,50 @@ class SampleTable():
             file = open(os.path.join(fp, label) + '.brr', 'wb')
             file.write(sample.data)
 
+    def sample_map(used_samples, base=0x16):
+        sample_map = {}
+        i = base
+        for sample_i in sorted(used_samples):
+            sample_map[sample_i] = i
+            i += 1
+        return sample_map
+
+    def sample_defines(sample_map: dict):
+        asm = ''
+        for sample_i in sample_map.keys():
+            asm += f'!sample{sample_i:02X} = ${sample_map[sample_i]:02X}\n'
+        return asm
+
 class InstrTable():
     def __init__(self, label=''):
         self.label = label
         self.instrs = []
 
     def extract(self, spc: SPCFile, addr, used_instrs=None):
+        used_sample_ids = set()
         saved_addr = spc.tell()
         for i in sorted(used_instrs):
             spc.seek(addr+i*6)
-            self.instrs.append([spc.read_int(1) for _ in range(6)])
+            instr = [spc.read_int(1) for _ in range(6)]
+            self.instrs.append(instr)
+            used_sample_ids.add(instr[0])
         spc.seek(saved_addr)
+
+        return sorted(used_sample_ids)
 
     def to_asm(self):
         asm = ''
         for instr in self.instrs:
-            asm += f'  db !instr{instr[0]:02X},{','.join(f'${b:02X}' for b in instr[1:])}\n'
+            asm += f'  db !sample{instr[0]:02X},{','.join(f'${b:02X}' for b in instr[1:])}\n'
         return asm
+
+    def instr_map(used_instrs, base=0x16):
+        instr_map = {}
+        i = base
+        for instr in sorted(used_instrs):
+            instr_map[instr] = i
+            i += 1
+        return instr_map
 
     def instr_defines(instr_map: dict):
         asm = ''

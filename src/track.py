@@ -64,9 +64,59 @@ class Track():
         0xFA: '!percBase'
     }
 
-    custom_command_lengths = {}
+    map_addmusic_to_standard = {
+        0xC6: 0xC8,
+        0xC7: 0xC9,
 
-    custom_command_names = {}
+        0xDA: 0xE0,
+        0xDB: 0xE1,
+        0xDC: 0xE2,
+        0xDD: 0xF9,
+        0xDE: 0xE3,
+        0xDF: 0xE4,
+        0xE0: 0xE5,
+        0xE1: 0xE6,
+        0xE2: 0xE7,
+        0xE3: 0xE8,
+        0xE4: 0xE9,
+        0xE5: 0xEB,
+
+        0xE7: 0xED,
+        0xE8: 0xEE,
+        0xE9: 0xEF,
+        0xEA: 0xF0,
+        0xEB: 0xF1,
+        0xEC: 0xF2,
+
+        0xEE: 0xF4,
+        0xEF: 0xF5,
+        0xF0: 0xF6,
+        0xF1: 0xF7,
+        0xF2: 0xF8,
+
+        0xFD: 0xEC,
+        0xFE: 0xF3
+    }
+
+    custom_command_lengths = {
+        'addmusic': {
+            0x1E6: 1,
+            0x1F4: 1,
+            0x1F5: 8,
+            0x1FA: 2,
+            0x1FC: 4
+        }
+    }
+
+    custom_command_names = {
+        'addmusic': {
+            0x1E6: '!subloop',
+            0x1F4: '!addmusicF4',
+            0x1F5: '!addmusicFIR',
+            0x1FA: '!addmusicFA',
+            0x1FC: '!addmusicFC'
+        }
+    }
 
     standard_note_length_table = [
         0x32,0x65,0x7F,0x98,0xB2,0xCB,0xE5,0xFC,
@@ -74,9 +124,12 @@ class Track():
     ]
 
     def __init__(self, label='', game='common'):
+        self.addr = 0
         self.label = label
         self.commands = []
         self.len = 0
+        self.len_before_subloops = 0
+        self.index_before_subloop = 0
         self.note_len = 0
         self.is_subroutine = False
         self.game = game
@@ -86,12 +139,18 @@ class Track():
             return False
         return self.commands == o.commands
 
-    def extract(self, spc: SPCFile, addr, len_limit=None):
+    def extract(self, spc: SPCFile, addr, len_limit=None, unroll_subloops=True):
         saved_addr = spc.tell()
         spc.seek(addr)
+        self.addr = addr
 
         while True:
             command = spc.read_int(1)
+            if self.game == 'addmusic':
+                if command in self.map_addmusic_to_standard:
+                    command = self.map_addmusic_to_standard[command]
+                elif command >= 0xDA:
+                    command += 0x100
             if command == 0: # terminator
                 break
             elif command < 0x80: # note length
@@ -143,6 +202,18 @@ class Track():
                         params[0] = (20 - (params[0] & 0x1F)) | (params[0] & 0xE0)
                     elif command == 0xE2:
                         params[1] = (20 - (params[1] & 0x1F)) | (params[1] & 0xE0)
+                if self.game == 'addmusic':
+                    if command == 0x1E6: # subloop
+                        if params[0] == 0:
+                            self.len_before_subloops = self.len
+                            self.index_before_subloop = len(self.commands)
+                            if unroll_subloops:
+                                continue
+                        else:
+                            self.len += (self.len-self.len_before_subloops)*params[0]
+                            if unroll_subloops:
+                                self.commands += self.commands[self.index_before_subloop:]*params[0]
+                                continue
                 self.commands.append([command] + params)
 
         spc.seek(saved_addr)
@@ -189,6 +260,7 @@ class Track():
         signed = lambda n: n-0x100 if n >= 0x80 else n
 
         asm = f'{self.label}\n'
+        #asm = f'{self.label} ; ${self.addr:04X}\n'
         if self.label == '.pattern0_0':
             if prefix != '':
                 asm += f'  {prefix}\n'

@@ -28,22 +28,21 @@ class PJASMConverter():
         used_instrs = tracker.used_instrs(perc_base=perc_base)
         first_perc = None if len(used_instrs[1]) == 0 else min(used_instrs[1])
 
-        instr_map = {}
-        i = 0x16
-        for instr in sorted(used_instrs[0] | used_instrs[1]):
-            instr_map[instr] = i
-            i += 1
+        instr_map = InstrTable.instr_map(used_instrs[0] | used_instrs[1], base=0x16)
         self.asm += InstrTable.instr_defines(instr_map) + '\n'
 
         instr_table = InstrTable()
-        instr_table.extract(self.spc, p_instr_table, used_instrs=used_instrs[0] | used_instrs[1])
+        used_sample_ids = instr_table.extract(self.spc, p_instr_table, used_instrs=used_instrs[0] | used_instrs[1])
+        sample_map = SampleTable.sample_map(used_sample_ids, base=0x16)
+        self.asm += SampleTable.sample_defines(sample_map) + '\n'
+
         self.asm += 'spcblock 6*$16+!p_instrumentTable nspc ; instruments\n'
         self.asm += instr_table.to_asm()
         self.asm += 'endspcblock\n\n'
 
         self.spc.seek(0x1005D) # DIR
         self.sample_table = SampleTable()
-        self.sample_table.extract(self.spc, self.spc.read_int(1)*0x100, used_sample_ids=used_instrs[0] | used_instrs[1])
+        self.sample_table.extract(self.spc, self.spc.read_int(1)*0x100, used_sample_ids=used_sample_ids)
         self.asm += 'spcblock 4*$16+!p_sampleTable nspc ; sample table\n'
         self.asm += self.sample_table.sample_table_to_asm()
         self.asm += 'endspcblock\n\n'
