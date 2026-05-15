@@ -18,17 +18,24 @@ class NSPCScanner():
         return self.instr_table_addr
 
     def scan_tracker_pointers(self, game='common'):
-        # scan for a 'asl a : mov x,a : mov a,pppp-1+x : mov y,a : mov a,pppp-2+x : movw $40,ya : mov $0C,#$02' where pppp = tracker_pointers_addr (most games)
-        # again, some games have $04, $40 and $0C repointed, and
-        # Kirby Super Star has a beq $0E instead of a mov $04,a before the asl for some reason
-        scanned_bytes = self.spc.scan('1C 5D F5 ?? ?? FD F5 ?? ?? DA ?? 8F 02 ??')
-        if scanned_bytes != None:
-            self.tracker_pointers_addr = scanned_bytes[3]+scanned_bytes[4]*0x100+1
+        if game == 'addmusic':
+            # AddMusicKFF
+            scanned_bytes = self.spc.scan('1C FD F6 ?? ?? 2D C4 40 F6 ?? ?? 2D C4 41')
+            if scanned_bytes != None:
+                self.tracker_pointers_addr = scanned_bytes[3]+scanned_bytes[4]*0x100+2
+                print(hex(self.tracker_pointers_addr))
         else:
-            # Yoshi's Island
-            scanned_bytes = self.spc.scan('1C 5D F5 ?? ?? FD D0 03 C4 ?? 6F F5 ?? ?? DA ?? 8F 02 ??')
+            # scan for a 'asl a : mov x,a : mov a,pppp-1+x : mov y,a : mov a,pppp-2+x : movw $40,ya : mov $0C,#$02' where pppp = tracker_pointers_addr (most games)
+            # again, some games have $04, $40 and $0C repointed, and
+            # Kirby Super Star has a beq $0E instead of a mov $04,a before the asl for some reason
+            scanned_bytes = self.spc.scan('1C 5D F5 ?? ?? FD F5 ?? ?? DA ?? 8F 02 ??')
             if scanned_bytes != None:
                 self.tracker_pointers_addr = scanned_bytes[3]+scanned_bytes[4]*0x100+1
+            else:
+                # Yoshi's Island
+                scanned_bytes = self.spc.scan('1C 5D F5 ?? ?? FD D0 03 C4 ?? 6F F5 ?? ?? DA ?? 8F 02 ??')
+                if scanned_bytes != None:
+                    self.tracker_pointers_addr = scanned_bytes[3]+scanned_bytes[4]*0x100+1
         return self.tracker_pointers_addr
 
     def scan_track_index(self, game='common'):
@@ -46,6 +53,8 @@ class NSPCScanner():
                 if self.track_index == 0:
                     self.spc.seek(0x06)
                     self.track_index = self.spc.read_int(1)
+            case 'addmusic':
+                self.track_index = 0xA # for now it's hardcoded
             case _:
                 self.spc.seek(0xF4)
                 self.track_index = self.spc.read_int(1)
