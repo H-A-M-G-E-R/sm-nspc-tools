@@ -23,7 +23,6 @@ class NSPCScanner():
             scanned_bytes = self.spc.scan('1C FD F6 ?? ?? 2D C4 40 F6 ?? ?? 2D C4 41')
             if scanned_bytes != None:
                 self.tracker_pointers_addr = scanned_bytes[3]+scanned_bytes[4]*0x100+2
-                print(hex(self.tracker_pointers_addr))
         else:
             # scan for a 'asl a : mov x,a : mov a,pppp-1+x : mov y,a : mov a,pppp-2+x : movw $40,ya : mov $0C,#$02' where pppp = tracker_pointers_addr (most games)
             # again, some games have $04, $40 and $0C repointed, and
