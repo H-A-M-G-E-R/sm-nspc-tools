@@ -101,6 +101,7 @@ class Track():
     custom_command_lengths = {
         'addmusic': {
             0x1E6: 1,
+            0x1ED: 2,
             0x1F4: 1,
             0x1F5: 8,
             0x1FA: 2,
@@ -111,11 +112,32 @@ class Track():
     custom_command_names = {
         'addmusic': {
             0x1E6: '!subloop',
+            0x1ED: '!adsrGain',
             0x1F4: '!addmusicF4',
-            0x1F5: '!addmusicFIR',
+            0x1F5: '!addmusicFir',
             0x1FA: '!addmusicFA',
             0x1FC: '!addmusicFC'
         }
+    }
+
+    addmusicF4_command_names = {
+        0: '!addmusicF4_yoshiDrums5',
+        1: '!addmusicF4_legato',
+        2: '!setDPMiscCommand,!noteEndInTicks,1',
+        3: '!toggleEcho',
+        5: '!addmusicF4_snesSync',
+        6: '!addmusicF4_yoshiDrums',
+        7: '!addmusicF4_tempoHikeOff',
+        8: '!addmusicF4_velocityTable',
+        9: '!addmusicF4_restoreInst'
+    }
+
+    addmusicFA_command_names = {
+        0: '!addmusicFA_pitchModulation',
+        1: '!addmusicFA_enableGain',
+        2: '!transpose', # this isn't present in the proto NSPC engine
+        3: '!addmusicFA_amplify',
+        4: '!addmusicFA_reserveEchoBuffer',
     }
 
     standard_note_length_table = [
@@ -329,6 +351,15 @@ class Track():
                         continue
                     params[0] = f',!instr{first_perc:02X}'
                 if self.game in Track.custom_command_names and command[0] in Track.custom_command_names[self.game]:
+                    if self.game == 'addmusic':
+                        if command[0] == 0x1F4:
+                            if command[1] in self.addmusicF4_command_names:
+                                asm += f'{self.addmusicF4_command_names[command[1]]}\n'
+                                continue
+                        if command[0] == 0x1FA:
+                            if command[1] in self.addmusicFA_command_names:
+                                asm += f'{self.addmusicFA_command_names[command[1]]},{command[2]}\n'
+                                continue
                     asm += f'{Track.custom_command_names[self.game][command[0]]}{''.join(params)}\n'
                 else:
                     asm += f'{Track.command_names[command[0]]}{''.join(params)}\n'
