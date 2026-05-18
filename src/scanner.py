@@ -9,14 +9,24 @@ class NSPCScanner():
         self.track_index = 0
         self.note_length_table_addr = None
 
-    def scan_instr_table(self):
-        # scan for a 'mov y,#$06 : mul ya : movw pp,ya : clrc : adc pp,#$ll : adc pp+1,#$hh' where pp is usually $14 and hhll = instr_table_addr
-        # there are a few cases where pp != $14
-        # for example, KiKi KaiKai: Nazo no Kuro Mantle/Pocky and Rocky has 'adc $1C,#$00 : adc $1D,#$3E'
-        scanned_bytes = self.spc.scan('8D 06 CF DA ?? 60 98 ?? ?? 98 ?? ??')
-        if scanned_bytes != None:
-            self.instr_table_addr = scanned_bytes[7]+scanned_bytes[10]*0x100
-        return self.instr_table_addr
+    def scan_instr_table(self, p_track=0):
+        if GlobalSettings.game == 'addmusic':
+            # requires p_track
+            self.spc.seek(p_track)
+            while True:
+                word = self.spc.read_int(2)
+                if word == 0:
+                    return self.spc.tell()-0x1E*6
+                if word == 0x00FF:
+                    return self.spc.tell()+2-0x1E*6
+        else:
+            # scan for a 'mov y,#$06 : mul ya : movw pp,ya : clrc : adc pp,#$ll : adc pp+1,#$hh' where pp is usually $14 and hhll = instr_table_addr
+            # there are a few cases where pp != $14
+            # for example, KiKi KaiKai: Nazo no Kuro Mantle/Pocky and Rocky has 'adc $1C,#$00 : adc $1D,#$3E'
+            scanned_bytes = self.spc.scan('8D 06 CF DA ?? 60 98 ?? ?? 98 ?? ??')
+            if scanned_bytes != None:
+                self.instr_table_addr = scanned_bytes[7]+scanned_bytes[10]*0x100
+            return self.instr_table_addr
 
     def scan_tracker_pointers(self):
         if GlobalSettings.game == 'addmusic':
