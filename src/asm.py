@@ -50,8 +50,15 @@ class PJASMConverter():
         self.asm += 'spcblock $B210-$6E00+!p_sampleData nspc ; sample data\n'
         self.asm += self.sample_table.samples_to_asm('', hash_option) + '\n'
 
-        self.spc.seek(p_note_length_table)
-        note_length_table = [self.spc.read_int(1) for _ in range(0x18)]
+        if p_note_length_table != None:
+            self.spc.seek(p_note_length_table)
+            note_length_table = [self.spc.read_int(1) for _ in range(0x18)]
+        else:
+            # use defaults
+            if GlobalSettings.game == 'addmusic':
+                note_length_table = Track.addmusic_note_length_table_standard[:]
+            else:
+                note_length_table = Track.standard_note_length_table[:]
 
         if note_length_table != Track.standard_note_length_table:
             self.asm += 'NoteLengthTable: ; note length table\n'

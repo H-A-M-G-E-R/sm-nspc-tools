@@ -60,8 +60,10 @@ if args.mode == 'pj':
         args.p_track = spc.read_int(2)
     if args.p_instr_table == None:
         args.p_instr_table = scanner.scan_instr_table(args.p_track)
-    if args.p_note_length_table == None:
+    if args.p_note_length_table == None and GlobalSettings.game != 'addmusic':
         args.p_note_length_table = scanner.scan_note_length_table()
+        if args.p_note_length_table == None:
+            print('note length table not detected, fallback to default')
 
     asm = open(args.asm, 'w')
     converter = PJASMConverter(spc)
@@ -77,6 +79,8 @@ elif args.mode == 'pj_bulk':
             spc.seek(scanner.scan_tracker_pointers()+scanner.scan_track_index()*2-2)
             p_track = spc.read_int(2)
             p_note_length_table = scanner.scan_note_length_table()
+            if p_note_length_table == None and GlobalSettings.game != 'addmusic':
+                print('note length table not detected, fallback to default')
 
             spc_filename = os.path.split(spc_path)[1]
             asm = open(os.path.join(args.asm, os.path.splitext(spc_filename)[0] + '.asm'), 'w')
