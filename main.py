@@ -1,3 +1,4 @@
+from src.global_settings import GlobalSettings
 from src.spcfile import SPCFile
 from src.instr import SampleTable, InstrTable
 from src.scanner import NSPCScanner
@@ -45,24 +46,25 @@ parser_c.add_argument('spc', type = str, help = 'Filepath to input SPC')
 parser_c.add_argument('fp', type = str, help = 'Folder path to output BRRs')
 
 args = argparser.parse_args()
+GlobalSettings.game = args.game
 
 if args.mode == 'pj':
     spc = SPCFile(args.spc)
     scanner = NSPCScanner(spc)
     if args.p_instr_table == None:
-        args.p_instr_table = scanner.scan_instr_table(args.game)
+        args.p_instr_table = scanner.scan_instr_table()
     if args.p_track == None:
         if args.p_track_pointers == None:
-            args.p_track_pointers = scanner.scan_tracker_pointers(args.game)
+            args.p_track_pointers = scanner.scan_tracker_pointers()
         if args.i_track == None:
-            args.i_track = scanner.scan_track_index(args.game)
+            args.i_track = scanner.scan_track_index()
         spc.seek(args.p_track_pointers+args.i_track*2-2)
         args.p_track = spc.read_int(2)
     if args.p_note_length_table == None:
-        args.p_note_length_table = scanner.scan_note_length_table(args.game)
+        args.p_note_length_table = scanner.scan_note_length_table()
 
     asm = open(args.asm, 'w')
-    converter = PJASMConverter(spc, game=args.game)
+    converter = PJASMConverter(spc)
     asm.write(converter.convert(args.p_instr_table, args.p_track, args.p_note_length_table, args.defines_fp, args.export_samples, args.amplify, args.prefix))
 
     if args.export_samples:
@@ -72,14 +74,14 @@ elif args.mode == 'pj_bulk':
         try:
             spc = SPCFile(spc_path)
             scanner = NSPCScanner(spc)
-            spc.seek(scanner.scan_tracker_pointers(args.game)+scanner.scan_track_index(args.game)*2-2)
+            spc.seek(scanner.scan_tracker_pointers()+scanner.scan_track_index()*2-2)
             p_track = spc.read_int(2)
-            p_note_length_table = scanner.scan_note_length_table(args.game)
+            p_note_length_table = scanner.scan_note_length_table()
 
             spc_filename = os.path.split(spc_path)[1]
             asm = open(os.path.join(args.asm, os.path.splitext(spc_filename)[0] + '.asm'), 'w')
-            converter = PJASMConverter(spc, game=args.game)
-            asm.write(converter.convert(scanner.scan_instr_table(args.game), p_track, p_note_length_table, args.defines_fp, args.export_samples, args.amplify, args.prefix))
+            converter = PJASMConverter(spc)
+            asm.write(converter.convert(scanner.scan_instr_table(), p_track, p_note_length_table, args.defines_fp, args.export_samples, args.amplify, args.prefix))
 
             if args.export_samples:
                 converter.sample_table.samples_to_files(args.asm, hash_option=True)

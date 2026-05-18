@@ -1,0 +1,3 @@
+
+class GlobalSettings:
+    game = 'common'

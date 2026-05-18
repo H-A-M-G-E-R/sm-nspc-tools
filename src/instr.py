@@ -1,3 +1,4 @@
+from src.global_settings import GlobalSettings
 from src.spcfile import SPCFile
 import hashlib, os.path
 

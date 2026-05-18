@@ -1,3 +1,4 @@
+from src.global_settings import GlobalSettings
 from src.spcfile import SPCFile
 
 class NSPCScanner():
@@ -8,7 +9,7 @@ class NSPCScanner():
         self.track_index = 0
         self.note_length_table_addr = None
 
-    def scan_instr_table(self, game='common'):
+    def scan_instr_table(self):
         # scan for a 'mov y,#$06 : mul ya : movw pp,ya : clrc : adc pp,#$ll : adc pp+1,#$hh' where pp is usually $14 and hhll = instr_table_addr
         # there are a few cases where pp != $14
         # for example, KiKi KaiKai: Nazo no Kuro Mantle/Pocky and Rocky has 'adc $1C,#$00 : adc $1D,#$3E'
@@ -17,8 +18,8 @@ class NSPCScanner():
             self.instr_table_addr = scanned_bytes[7]+scanned_bytes[10]*0x100
         return self.instr_table_addr
 
-    def scan_tracker_pointers(self, game='common'):
-        if game == 'addmusic':
+    def scan_tracker_pointers(self):
+        if GlobalSettings.game == 'addmusic':
             # AddMusicKFF
             scanned_bytes = self.spc.scan('1C FD F6 ?? ?? 2D C4 40 F6 ?? ?? 2D C4 41')
             if scanned_bytes != None:
@@ -37,9 +38,9 @@ class NSPCScanner():
                     self.tracker_pointers_addr = scanned_bytes[3]+scanned_bytes[4]*0x100+1
         return self.tracker_pointers_addr
 
-    def scan_track_index(self, game='common'):
+    def scan_track_index(self):
         saved_addr = self.spc.tell()
-        match game:
+        match GlobalSettings.game:
             case 'f_zero':
                 self.spc.seek(0x04)
                 self.track_index = self.spc.read_int(1)
@@ -68,7 +69,7 @@ class NSPCScanner():
         self.track_index &= 0x7F # needed for Tetris & Dr. Mario
         return self.track_index
 
-    def scan_note_length_table(self, game='common'):
+    def scan_note_length_table(self):
         #$1842: 2D        push  a            ;\
         #$1843: 9F        xcn   a            ;|
         #$1844: 28 07     and   a,#$07       ;|

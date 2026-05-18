@@ -1,12 +1,12 @@
+from src.global_settings import GlobalSettings
 from src.spcfile import SPCFile
 from src.instr import BRRSample, SampleTable, InstrTable
 from src.track import Track, Pattern, Tracker
 
 class PJASMConverter():
-    def __init__(self, spc, game='common'):
+    def __init__(self, spc):
         self.spc = spc
         self.asm = ''
-        self.game = game
 
     def convert(self, p_instr_table, p_track, p_note_length_table, defines_fp='defines.asm', hash_option=False, vol_multiplier=1.0, prefix=''):
         self.spc.seek(0x1000C)
@@ -18,7 +18,7 @@ class PJASMConverter():
         self.asm += 'norom : org 0\n'
         self.asm += f'incsrc "{defines_fp}"\n\n'
 
-        tracker = Tracker(label=f'Tracker{p_track:04X}', game=self.game)
+        tracker = Tracker(label=f'Tracker{p_track:04X}')
         tracker.extract(self.spc, p_track)
         for track in tracker.tracks_and_subsections():
             track.amplify(vol_multiplier)

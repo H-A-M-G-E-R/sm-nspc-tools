@@ -1,3 +1,4 @@
+from src.global_settings import GlobalSettings
 from src.spcfile import SPCFile
 import copy
 
@@ -145,7 +146,7 @@ class Track():
         0x19,0x32,0x4C,0x65,0x72,0x7F,0x8C,0x98,0xA5,0xB2,0xBF,0xCB,0xD8,0xE5,0xF2,0xFC
     ]
 
-    def __init__(self, label='', game='common'):
+    def __init__(self, label=''):
         self.addr = 0
         self.label = label
         self.commands = []
@@ -154,7 +155,6 @@ class Track():
         self.index_before_subloop = 0
         self.note_len = 0
         self.is_subroutine = False
-        self.game = game
 
     def __eq__(self, o):
         if type(self) != type(o):
@@ -168,7 +168,7 @@ class Track():
 
         while True:
             command = spc.read_int(1)
-            if self.game == 'addmusic':
+            if GlobalSettings.game == 'addmusic':
                 if command in self.map_addmusic_to_standard:
                     command = self.map_addmusic_to_standard[command]
                 elif command >= 0xDA:
@@ -201,7 +201,7 @@ class Track():
                 subsection_addr = spc.read_int(2)
                 repetitions = spc.read_int(1)
 
-                subsection = Track(label=f'.sub{subsection_addr:04X}', game=self.game)
+                subsection = Track(label=f'.sub{subsection_addr:04X}')
                 subsection.is_subroutine = True
                 subsection.note_len = self.note_len
                 subsection.extract(spc, subsection_addr)
@@ -213,18 +213,18 @@ class Track():
                 if len_limit != None and self.len >= len_limit:
                     break
             else: # track command
-                if self.game in Track.custom_command_lengths and command in Track.custom_command_lengths[self.game]:
-                    length = Track.custom_command_lengths[self.game][command]
+                if GlobalSettings.game in Track.custom_command_lengths and command in Track.custom_command_lengths[GlobalSettings.game]:
+                    length = Track.custom_command_lengths[GlobalSettings.game][command]
                 else:
                     length = Track.command_lengths[command]
                 params = [spc.read_int(1) for _ in range(length)]
-                if self.game == 'hal':
+                if GlobalSettings.game == 'hal':
                     # Panning is reversed in HAL games
                     if command == 0xE1:
                         params[0] = (20 - (params[0] & 0x1F)) | (params[0] & 0xE0)
                     elif command == 0xE2:
                         params[1] = (20 - (params[1] & 0x1F)) | (params[1] & 0xE0)
-                if self.game == 'addmusic':
+                if GlobalSettings.game == 'addmusic':
                     if command == 0x1E6: # subloop
                         if params[0] == 0:
                             self.len_before_subloops = self.len
@@ -286,7 +286,7 @@ class Track():
         if self.label == '.pattern0_0':
             if prefix != '':
                 asm += f'  {prefix}\n'
-            if self.game == 'thunderspirits':
+            if GlobalSettings.game == 'thunderspirits':
                 # read dsp registers for echo bc echo commands aren't there lol, haven't figured out what sets the echo
                 saved_addr = spc.tell()
 
@@ -350,8 +350,8 @@ class Track():
                         asm = asm[:-2]
                         continue
                     params[0] = f',!instr{first_perc:02X}'
-                if self.game in Track.custom_command_names and command[0] in Track.custom_command_names[self.game]:
-                    if self.game == 'addmusic':
+                if GlobalSettings.game in Track.custom_command_names and command[0] in Track.custom_command_names[GlobalSettings.game]:
+                    if GlobalSettings.game == 'addmusic':
                         if command[0] == 0x1F4:
                             if command[1] in self.addmusicF4_command_names:
                                 asm += f'{self.addmusicF4_command_names[command[1]]}\n'
@@ -360,7 +360,7 @@ class Track():
                             if command[1] in self.addmusicFA_command_names:
                                 asm += f'{self.addmusicFA_command_names[command[1]]},{command[2]}\n'
                                 continue
-                    asm += f'{Track.custom_command_names[self.game][command[0]]}{''.join(params)}\n'
+                    asm += f'{Track.custom_command_names[GlobalSettings.game][command[0]]}{''.join(params)}\n'
                 else:
                     asm += f'{Track.command_names[command[0]]}{''.join(params)}\n'
         if end:
@@ -368,10 +368,9 @@ class Track():
         return asm
 
 class Pattern():
-    def __init__(self, label='', game='common'):
+    def __init__(self, label=''):
         self.label = label
         self.tracks = [None]*8
-        self.game = game
 
     def extract(self, spc: SPCFile, addr):
         saved_addr = spc.tell()
@@ -381,7 +380,7 @@ class Pattern():
         for i in range(8):
             track_addr = spc.read_int(2)
             if track_addr != 0:
-                track = Track(label=f'{self.label}_{i}', game=self.game)
+                track = Track(label=f'{self.label}_{i}')
                 track.extract(spc, track_addr, len_limit)
 
                 self.tracks[i] = track
@@ -394,11 +393,10 @@ class Pattern():
         return f'{self.label}: dw {', '.join('0' if track == None else track.label for track in self.tracks)}'
 
 class Tracker():
-    def __init__(self, label='', game='common'):
+    def __init__(self, label=''):
         self.label = label
         self.commands = []
         self.patterns = {}
-        self.game = game
 
     def extract(self, spc: SPCFile, addr):
         saved_addr = spc.tell()
@@ -424,7 +422,7 @@ class Tracker():
                     label = f'.pattern{pattern_i}'
                     used_patterns[command] = label
                     pattern_i += 1
-                    pattern = Pattern(label=label, game=self.game)
+                    pattern = Pattern(label=label)
                     pattern.extract(spc, command)
 
                     # Deduplicate tracks
