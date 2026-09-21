@@ -51,7 +51,7 @@ class PJASMConverter():
         self.asm += self.sample_table.sample_table_to_asm()
         self.asm += 'endspcblock\n\n'
 
-        self.asm += 'spcblock $B210-$6E00+!p_sampleData nspc ; sample data\n'
+        self.asm += 'spcblock !p_songSpecificData nspc ; sample data\n'
         self.asm += self.sample_table.samples_to_asm('', hash_option) + '\n'
 
         if p_note_length_table != None:
