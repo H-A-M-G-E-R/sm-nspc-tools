@@ -8,18 +8,22 @@ class PJASMConverter():
         self.spc = spc
         self.asm = ''
 
-    def convert(self, p_instr_table, p_track, p_note_length_table, defines_fp='defines.asm', hash_option=False, vol_multiplier=1.0, prefix=''):
-        self.spc.seek(0x1000C)
-        main_vol_l = self.spc.read_int(1)
-        self.spc.seek(0x1001C)
-        main_vol_r = self.spc.read_int(1)
+    def convert(self, p_instr_table, p_track, p_note_length_table, defines_fp='defines.asm', hash_option=False, vol_multiplier=1.0, prefix='', master_volume=None):
+        if master_volume == None:
+            self.spc.seek(0x1000C)
+            main_vol_l = self.spc.read_int(1)
+            self.spc.seek(0x1001C)
+            main_vol_r = self.spc.read_int(1)
+        else:
+            main_vol_l = master_volume
+            main_vol_r = master_volume
 
         self.asm += 'asar 1.91\n'
         self.asm += 'norom : org 0\n'
         self.asm += f'incsrc "{defines_fp}"\n\n'
 
         tracker = Tracker(label=f'Tracker{p_track:04X}')
-        tracker.extract(self.spc, p_track)
+        inside_tracks = tracker.extract(self.spc, p_track)
         for track in tracker.tracks_and_subsections():
             track.amplify(vol_multiplier)
             track.normalize_echo_volume(main_vol_l=main_vol_l, main_vol_r=main_vol_r)
@@ -77,13 +81,14 @@ class PJASMConverter():
         for pattern in tracker.patterns.values():
             end = True
             for track in pattern.tracks:
-                if track != None and not track.label in used_tracks:
+                if track != None and track.label not in used_tracks and track.label not in tracker.inside_tracks:
                     self.asm += track.to_asm(end=end, perc_base=perc_base, first_perc=first_perc, use_custom_note_length_table=note_length_table != Track.standard_note_length_table, prefix=prefix, spc=self.spc) + '\n'
                     used_tracks.add(track.label)
                     #end = False
 
         for subsection in tracker.subsections().values():
-            self.asm += subsection.to_asm(perc_base=perc_base, first_perc=first_perc) + '\n'
+            if subsection.label not in tracker.inside_tracks:
+                self.asm += subsection.to_asm(perc_base=perc_base, first_perc=first_perc) + '\n'
 
         self.asm = self.asm[:-1] # delete newline
         self.asm += 'endspcblock\n\n'

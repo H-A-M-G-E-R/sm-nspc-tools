@@ -105,6 +105,7 @@ class Track():
             0x1ED: 2,
             0x1F4: 1,
             0x1F5: 8,
+            0x1F6: 2,
             0x1FA: 2,
             0x1FC: 4
         }
@@ -116,6 +117,7 @@ class Track():
             0x1ED: '!adsrGain',
             0x1F4: '!addmusicF4',
             0x1F5: '!addmusicFir',
+            0x1F6: '!addmusicWriteDsp',
             0x1FA: '!addmusicFA',
             0x1FC: '!addmusicFC'
         }
@@ -165,6 +167,7 @@ class Track():
         self.index_before_subloop = 0
         self.note_len = 0
         self.is_subroutine = False
+        self.labels_in_middle = []
 
     def __eq__(self, o):
         if type(self) != type(o):
@@ -327,7 +330,11 @@ class Track():
             if use_custom_note_length_table:
                 asm += '  !setNoteLengthTable : dw NoteLengthTable\n'
 
-        for command in self.commands:
+        for command_i in range(len(self.commands)):
+            command = self.commands[command_i]
+            for (i, l) in self.labels_in_middle:
+                if i == command_i:
+                    asm += f'{l}:\n'
             asm += '  '
             if command[0] < 0x80:
                 asm += f'db {command[0]}{''.join(f',${b:02X}' for b in command[1:])}\n'
@@ -407,6 +414,7 @@ class Tracker():
         self.label = label
         self.commands = []
         self.patterns = {}
+        self.inside_tracks = set()
 
     def extract(self, spc: SPCFile, addr):
         saved_addr = spc.tell()
@@ -454,6 +462,8 @@ class Tracker():
 
         spc.seek(saved_addr)
 
+        self.deduplicate_pass_2()
+
     def to_asm(self):
         asm = f'{self.label}:\n'
         loop_indices = set()
@@ -488,10 +498,23 @@ class Tracker():
     def tracks_and_subsections(self):
         for pattern in self.patterns.values():
             for track in pattern.tracks:
-                if track != None:
+                if track != None and track.label not in self.inside_tracks:
                     yield track
         for subsection in self.subsections().values():
-            yield subsection
+            if subsection.label not in self.inside_tracks:
+                yield subsection
+
+    def deduplicate_pass_2(self):
+        for track1 in self.tracks_and_subsections():
+            for track2 in self.tracks_and_subsections():
+                if track2.label in self.inside_tracks:
+                    continue
+                if len(track2.commands) >= len(track1.commands):
+                    continue
+                if track2.commands == track1.commands[len(track1.commands)-len(track2.commands):]:
+                    #print(f'Duplicate: {track2.label} in {track1.label}, pos {len(track1.commands)-len(track2.commands)}')
+                    track1.labels_in_middle.append((len(track1.commands)-len(track2.commands), track2.label))
+                    self.inside_tracks.add(track2.label)
 
     def used_instrs(self, perc_base=0):
         used_instrs = set()

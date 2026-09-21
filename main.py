@@ -29,6 +29,7 @@ parser_a.add_argument('--defines_fp', type = str, default='defines.asm', help = 
 parser_a.add_argument('--export_samples', action='store_true', help = 'Whether to export samples')
 parser_a.add_argument('--amplify', type = float, default=1.0, help = 'Amplify volume by a multiplier')
 parser_a.add_argument('--prefix', type = str, default='', help = 'Prefix to add to first track')
+parser_a.add_argument('--master_volume', type = lambda n: int(n, 16), default=None, help = 'Master volume (default: auto-detect, 0x60 for don\'t normalize echo volume)')
 parser_a.add_argument('spc', type = str, help = 'Filepath to input SPC')
 parser_a.add_argument('asm', type = str, help = 'Filepath to output ASM')
 
@@ -38,6 +39,7 @@ parser_b.add_argument('--defines_fp', type = str, default='defines.asm', help = 
 parser_b.add_argument('--export_samples', action='store_true', help = 'Whether to export samples')
 parser_b.add_argument('--amplify', type = float, default=1.0, help = 'Amplify volume by a multiplier')
 parser_b.add_argument('--prefix', type = str, default='', help = 'Prefix to add to first track')
+parser_b.add_argument('--master_volume', type = lambda n: int(n, 16), default=None, help = 'Master volume (default: auto-detect, 0x60 for don\'t normalize echo volum)')
 parser_b.add_argument('spc', type = str, help = 'Folder path to input SPCs')
 parser_b.add_argument('asm', type = str, help = 'Folder path to output ASMs (and BRRS)')
 
@@ -67,7 +69,7 @@ if args.mode == 'pj':
 
     asm = open(args.asm, 'w')
     converter = PJASMConverter(spc)
-    asm.write(converter.convert(args.p_instr_table, args.p_track, args.p_note_length_table, args.defines_fp, args.export_samples, args.amplify, args.prefix))
+    asm.write(converter.convert(args.p_instr_table, args.p_track, args.p_note_length_table, args.defines_fp, args.export_samples, args.amplify, args.prefix, args.master_volume))
 
     if args.export_samples:
         converter.sample_table.samples_to_files(os.path.split(args.asm)[0], hash_option=True)
