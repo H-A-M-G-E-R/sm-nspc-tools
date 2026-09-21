@@ -174,7 +174,7 @@ class Track():
             return False
         return self.commands == o.commands
 
-    def extract(self, spc: SPCFile, addr, len_limit=None, unroll_subloops=True):
+    def extract(self, spc: SPCFile, addr, len_limit=None, unroll_subloops=False):
         saved_addr = spc.tell()
         spc.seek(addr)
         self.addr = addr
