@@ -125,21 +125,21 @@ class Track():
 
     addmusicF4_command_names = {
         0: '!addmusicF4_yoshiDrums5',
-        1: '!addmusicF4_legato',
+        1: '!toggleLegato',
         2: '!setDPMiscCommand,!noteEndInTicks,1',
         3: '!toggleEcho',
         5: '!addmusicF4_snesSync',
         6: '!addmusicF4_yoshiDrums',
         7: '!addmusicF4_tempoHikeOff',
         8: '!addmusicF4_velocityTable',
-        9: '!addmusicF4_restoreInst'
+        9: '!restoreInstrument'
     }
 
     addmusicFA_command_names = {
         0: '!addmusicFA_pitchModulation',
         1: '!addmusicFA_enableGain',
         2: '!transpose', # this isn't present in the proto NSPC engine
-        3: '!addmusicFA_amplify',
+        3: '!amplify',
         4: '!addmusicFA_reserveEchoBuffer',
     }
 
@@ -369,6 +369,9 @@ class Track():
                     params[0] = f',!instr{first_perc:02X}'
                 if GlobalSettings.game in Track.custom_command_names and command[0] in Track.custom_command_names[GlobalSettings.game]:
                     if GlobalSettings.game == 'addmusic':
+                        if command[0] == 0x1ED:
+                            params[0] = f',${command[1]:02X}'
+                            params[1] = f',${command[2]:02X}'
                         if command[0] == 0x1F4:
                             if command[1] in self.addmusicF4_command_names:
                                 asm += f'{self.addmusicF4_command_names[command[1]]}\n'
