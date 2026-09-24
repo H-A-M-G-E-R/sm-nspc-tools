@@ -249,6 +249,9 @@ class Track():
                             if unroll_subloops:
                                 self.commands += self.commands[self.index_before_subloop:]*params[0]
                                 continue
+                    if command == 0x1FA and params[0] == 1:
+                        command = 0x1ED
+                        params[0] = 0x80
                     if command == 0x1FC: # remote code
                         remote_code_addr = params[1] * 0x100 + params[0]
                         remote_code = Track(label=f'.remoteCode{remote_code_addr:04X}')
@@ -378,7 +381,7 @@ class Track():
                     params[0] = f',!instr{first_perc:02X}'
                 if GlobalSettings.game in Track.custom_command_names and command[0] in Track.custom_command_names[GlobalSettings.game]:
                     if GlobalSettings.game == 'addmusic':
-                        if command[0] == 0x1ED:
+                        if command[0] == 0x1ED or command[0] == 0x1F6:
                             params[0] = f',${command[1]:02X}'
                             params[1] = f',${command[2]:02X}'
                         if command[0] == 0x1F4:
