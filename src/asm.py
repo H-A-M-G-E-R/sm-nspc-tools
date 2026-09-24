@@ -90,6 +90,9 @@ class PJASMConverter():
             if subsection.label not in tracker.inside_tracks:
                 self.asm += subsection.to_asm(perc_base=perc_base, first_perc=first_perc) + '\n'
 
+        for remote_code in tracker.remote_code().values():
+            self.asm += remote_code.to_asm(perc_base=perc_base, first_perc=first_perc) + '\n'
+
         self.asm = self.asm[:-1] # delete newline
         self.asm += 'endspcblock\n\n'
         self.asm += 'spcblock !p_extra nspc\n'

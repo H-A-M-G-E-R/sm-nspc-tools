@@ -119,7 +119,7 @@ class Track():
             0x1F5: '!addmusicFir',
             0x1F6: '!addmusicWriteDsp',
             0x1FA: '!addmusicFA',
-            0x1FC: '!addmusicFC'
+            0x1FC: '!remoteCode'
         }
     }
 
@@ -249,6 +249,15 @@ class Track():
                             if unroll_subloops:
                                 self.commands += self.commands[self.index_before_subloop:]*params[0]
                                 continue
+                    if command == 0x1FC: # remote code
+                        remote_code_addr = params[1] * 0x100 + params[0]
+                        remote_code = Track(label=f'.remoteCode{remote_code_addr:04X}')
+                        remote_code.extract(spc, remote_code_addr)
+
+                        if params[2] == 0xFF:
+                            params[2] = -1
+
+                        params = [remote_code, params[2], params[3]]
                 self.commands.append([command] + params)
 
         spc.seek(saved_addr)
@@ -380,6 +389,9 @@ class Track():
                             if command[1] in self.addmusicFA_command_names:
                                 asm += f'{self.addmusicFA_command_names[command[1]]},{command[2]}\n'
                                 continue
+                        if command[0] == 0x1FC:
+                            asm += f'{Track.custom_command_names[GlobalSettings.game][command[0]]} : dw {command[1].label} : db {command[2]},{command[3]}\n'
+                            continue
                     asm += f'{Track.custom_command_names[GlobalSettings.game][command[0]]}{''.join(params)}\n'
                 else:
                     asm += f'{Track.command_names[command[0]]}{''.join(params)}\n'
@@ -518,6 +530,17 @@ class Tracker():
                     #print(f'Duplicate: {track2.label} in {track1.label}, pos {len(track1.commands)-len(track2.commands)}')
                     track1.labels_in_middle.append((len(track1.commands)-len(track2.commands), track2.label))
                     self.inside_tracks.add(track2.label)
+
+    def remote_code(self):
+        remote_code = {}
+        for pattern in self.patterns.values():
+            for track in pattern.tracks:
+                if track != None and GlobalSettings.game == 'addmusic':
+                    for command in track.commands:
+                        if command[0] == 0x1FC:
+                            remote_code[command[1].label] = command[1]
+
+        return remote_code
 
     def used_instrs(self, perc_base=0):
         used_instrs = set()
